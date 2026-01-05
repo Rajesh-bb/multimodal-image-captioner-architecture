@@ -1,4 +1,5 @@
 # multimodal-image-captioner-architecture
+link : https://drive.google.com/drive/folders/1EaocdBAgN-oueU7_KoM20eqWAncWzSnP?usp=sharing
 **🧠 Architecture (brief)**
 
 Encoder: pretrained vision backbone (ResNet/timm/CLIP) → image features (pooled/flattened or spatial map)

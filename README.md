@@ -1,32 +1,97 @@
-# multimodal-image-captioner-architecture
-code link: https://drive.google.com/drive/folders/1EaocdBAgN-oueU7_KoM20eqWAncWzSnP?usp=sharing
+# 📸 SceneScribe: Attention-Based Image Captioning
 
-**🧠 Architecture (brief)**
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white)
+![Kaggle](https://img.shields.io/badge/Trained_on-Kaggle_Tesla_T4-20BEFF?style=for-the-badge&logo=kaggle&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-Encoder: pretrained vision backbone (ResNet/timm/CLIP) → image features (pooled/flattened or spatial map)
+> **"Give the model an image, and it tells you a story."**
 
-Decoder: Transformer decoder that attends to image features via cross-attention, produces token-by-token captions with embedding & positional encodings
+**SceneScribe** is a deep learning model that generates descriptive captions for images. By marrying the computer vision power of **EfficientNet-B0** with the sequence modeling capabilities of a **Transformer Decoder**, this model learns to understand visual scenes and articulate them in natural language.
 
-Loss: supervised cross-entropy with teacher-forcing; optional label smoothing.
+---
 
-💡 Approach
+## 🚀 Key Features
 
-Built a reusable PyTorch pipeline with custom Dataset and DataLoader classes to load image–caption pairs.
+* **Encoder:** **EfficientNet-B0** (Pre-trained on ImageNet) for state-of-the-art feature extraction.
+* **Decoder:** A pure **Transformer Decoder** (8 Layers, 16 Heads) that attends to image features.
+* **Training Strategy:** Implemented a **Two-Stage Training** pipeline (Frozen CNN $\to$ Fine-Tuned CNN) to maximize stability and performance.
+* **Dataset:** Trained on the **Flickr30k** dataset (30,000 images, 5 captions per image).
 
-Applied image preprocessing and augmentation (torchvision.transforms, PIL/OpenCV): resize, random crop/flip, normalization — to improve generalization.
+---
 
-Used a pretrained vision encoder (ResNet / timm model / CLIP visual backbone) as feature extractor.
+## 🧠 Model Architecture
 
-Implemented a Transformer decoder that consumes encoded image features and generates captions token-by-token using an embedding layer and positional encodings.
+The architecture follows an **Encoder-Decoder** paradigm, replacing the older LSTM-based approaches with purely attention-based mechanisms.
 
-Added cross-attention between image features and decoder tokens to ground generated words in visual features.
+### 1. The Eye (Encoder)
+We use **EfficientNet-B0** as the backbone.
+* **Input:** Resized images ($224 \times 224$).
+* **Action:** We strip the classification head and extract spatial feature maps from the final convolutional block.
+* **Fine-Tuning:** During the second stage of training, we unfreeze the CNN to allow it to learn "caption-aware" features (e.g., focusing on verbs and relationships rather than just object classification).
 
-Trained with supervised cross-entropy loss and teacher-forcing; optionally used scheduled sampling to reduce exposure bias.
+### 2. The Brain (Decoder)
+A custom **Transformer Decoder** built from scratch in PyTorch.
+* **Parameters:** 8 Layers, 16 Attention Heads, 512 Model Dimension.
+* **Mechanism:** It uses **Multi-Head Cross Attention** to look at specific parts of the image while generating each word of the caption.
+* **Causal Masking:** Ensures the model predicts the next word based *only* on previous words (no peeking at the future).
 
-Implemented knowledge-aware regularization (label smoothing, weight decay) and applied gradient clipping to stabilize training.
+---
 
-✅ Impact
+## 📊 Performance & Results
 
-Achieved stable convergence with a final training loss of 0.337, demonstrating an effective multimodal image captioning system capable of generating semantically meaningful captions for real-world images, enabling vision-language applications.
+### 📉 Loss Curve
+The model was trained for **64 Epochs**. We observed a steady decline in both training and validation loss, confirming the model was learning effectively without major overfitting.
+
+<img width="529" height="296" alt="image" src="https://github.com/user-attachments/assets/a9796a7f-5efb-4e1a-8d84-0b75087cdc69" />
 
 
+### 🏆 BLEU Scores
+Evaluated on the Flickr30k Test Set using **Greedy Decoding**.
+
+| Metric | Score | Interpretation |
+| :--- | :--- | :--- |
+| **BLEU-1** | **60.47** | High accuracy in recognizing main objects (Dog, Man, Grass). |
+| **BLEU-2** | **41.84** | Good grasp of short phrases and bigrams. |
+| **BLEU-3** | **28.57** | Capable of forming coherent clauses. |
+| **BLEU-4** | **19.10** | **Competitive Baseline.** Produces grammatically correct sentences. |
+
+---
+
+## 🖼️ Model Outputs (Examples)
+
+Here are some actual results generated by the model on unseen test images:
+
+"<img width="470" height="411" alt="Screenshot 2026-02-01 061645" src="https://github.com/user-attachments/assets/6ba3871b-ab95-402f-932f-79b898d591bf" />
+"
+"<img width="470" height="411" alt="image" src="https://github.com/user-attachments/assets/b951833e-fcb8-4136-ba1c-b2bfd478cca0" />
+"
+"<img width="470" height="411" alt="Screenshot 2026-02-01 061607" src="https://github.com/user-attachments/assets/6f433f24-56aa-4179-8c14-3b4dea89aee0" />
+"
+"<img width="470" height="411" alt="Screenshot 2026-02-01 061626" src="https://github.com/user-attachments/assets/aa8354e5-6589-4454-9be3-452b71b1fde4" />
+"
+
+**Qualitative analysis demonstrates that the model successfully captures high-level scene semantics and correctly identifies dominant objects. However, it occasionally hallucinate when distinguishing fine-grained details or resolving complex spatial relationships in cluttered scenes.**
+
+## ⚠️ Hardware Limitations & "The Honest Note"
+
+This model was trained on a **Single NVIDIA Tesla T4 (16GB VRAM)** on Kaggle for approximately **8.5 hours**.
+
+**Current Limitations:**
+* **Compute Constraint:** Due to limited GPU hours, we capped training at ~64 epochs and used a relatively small batch size (32).
+
+**Potential for Scale:**
+With more powerful hardware (e.g., A100s) and longer training time, we could:
+1.  Increase the Encoder size (EfficientNet-B4 or ViT).
+2.  Train for 100+ epochs with a larger batch size.
+3.  Utilize Beam Search for inference.
+
+Despite these constraints, achieving a **BLEU-4 of 19.1** proves the architecture is robust and efficient.
+
+**🙌 ACKNOWLEDGEMENTS**
+
+  * Inspired by the standard Transformer architecture ("**Attention Is All You Need**").
+
+  * Dataset provided by Flickr30k entities.
+
+  * Special thanks to the open-source community for PyTorch and Timm libraries.
